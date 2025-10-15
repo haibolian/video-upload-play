@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 
 const processVideo = async (videoId, inputPath) => {
-  const outputDir = path.join(__dirname, '../../storage/hls', videoId);
+  const outputDir = path.join(__dirname, '../../storage/hls', String(videoId));
   await fs.mkdir(outputDir, { recursive: true });
   
   const outputPath = path.join(outputDir, 'index.m3u8');

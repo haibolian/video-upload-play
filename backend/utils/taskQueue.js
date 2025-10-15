@@ -22,13 +22,13 @@ const processTaskQueue = async () => {
       await processVideo(task.video_id, task.input_path);
       
       await conn.query(
-        'UPDATE task_queue SET status = ?, completed_at = NOW() WHERE id = ?',
+        'UPDATE task_queue SET status = ? WHERE id = ?',
         ['completed', task.id]
       );
       
       await conn.query(
         'UPDATE videos SET status = ?, hls_path = ? WHERE id = ?',
-        ['ready', `storage/hls/${task.video_id}/index.m3u8`, task.video_id]
+        ['completed', `storage/hls/${task.video_id}/index.m3u8`, task.video_id]
       );
     } catch (error) {
       await conn.query(

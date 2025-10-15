@@ -56,9 +56,15 @@ router.post('/video', authMiddleware, upload.single('video'), async (req, res) =
   try {
     await conn.beginTransaction();
 
+    const [rows] = await conn.query(
+      'SELECT COALESCE(MAX(episode), 0) + 1 as nextEpisode FROM videos WHERE course_id = ?',
+      [courseId]
+    );
+    const episode = rows[0].nextEpisode;
+
     const [videoResult] = await conn.query(
-      'INSERT INTO videos (course_id, title, description, original_path, status) VALUES (?, ?, ?, ?, ?)',
-      [courseId, title, description, file.path, 'processing']
+      'INSERT INTO videos (course_id, title, description, episode, original_path, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [courseId, title, description, episode, file.path, 'processing']
     );
 
     const videoId = videoResult.insertId;
@@ -71,6 +77,7 @@ router.post('/video', authMiddleware, upload.single('video'), async (req, res) =
     await conn.commit();
     res.json({ id: videoId, title, status: 'processing' });
   } catch (error) {
+    console.log(error)
     await conn.rollback();
     res.status(500).json({ error: '上传视频失败' });
   } finally {

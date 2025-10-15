@@ -12,6 +12,26 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [courses] = await pool.query('SELECT * FROM courses WHERE id = ?', [id]);
+    if (courses.length === 0) {
+      return res.status(404).json({ error: '课程不存在' });
+    }
+    
+    const [videos] = await pool.query(
+      'SELECT * FROM videos WHERE course_id = ? ORDER BY episode ASC',
+      [id]
+    );
+    
+    res.json({ ...courses[0], videos });
+  } catch (error) {
+    res.status(500).json({ error: '获取课程详情失败' });
+  }
+});
+
 router.get('/:id/videos', async (req, res) => {
   const { id } = req.params;
   

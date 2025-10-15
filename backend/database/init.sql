@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS videos (
   id INT PRIMARY KEY AUTO_INCREMENT,
   course_id INT NOT NULL COMMENT '课程ID',
   title VARCHAR(255) NOT NULL COMMENT '视频标题',
+  description TEXT COMMENT '视频描述',
   episode INT NOT NULL COMMENT '集数',
   original_path VARCHAR(500) COMMENT '原始视频路径',
   hls_path VARCHAR(500) COMMENT 'HLS m3u8文件路径',
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS videos (
 CREATE TABLE IF NOT EXISTS task_queue (
   id INT PRIMARY KEY AUTO_INCREMENT,
   video_id INT NOT NULL COMMENT '视频ID',
+  input_path VARCHAR(500) NOT NULL COMMENT '输入视频路径',
   status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending' COMMENT '任务状态',
   error_message TEXT COMMENT '错误信息',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
