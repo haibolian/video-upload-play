@@ -18,34 +18,28 @@
         </div>
       </div>
 
-      <div v-if="loading" class="loading">
-        <el-icon class="is-loading"><Loading /></el-icon>
-      </div>
-
-      <div v-else-if="courseList.length === 0" class="empty">
-        <el-empty description="暂无课程" />
-      </div>
-
-      <div v-else class="course-grid">
-        <el-card v-for="course in courseList" :key="course.id" class="course-card" shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span class="course-title">{{ course.title }}</span>
-              <div class="actions">
-                <el-button type="primary" size="small" :icon="Edit" @click="openDialog('edit', course)" />
-                <el-button type="danger" size="small" :icon="Delete" @click="handleDelete(course)" />
-              </div>
-            </div>
+      <el-table v-loading="loading" :data="courseList" style="width: 100%">
+        <el-table-column label="封面" width="120">
+          <template #default="{ row }">
+            <img v-if="row.cover_image" :src="`http://localhost:3000/${row.cover_image}`" class="cover-img" />
+            <div v-else class="no-cover">无封面</div>
           </template>
-          <div class="course-info">
-            <p class="description">{{ course.description || '暂无描述' }}</p>
-            <div class="meta">
-              <span><el-icon><VideoCamera /></el-icon> {{ course.video_count || 0 }} 个视频</span>
-              <span><el-icon><Clock /></el-icon> {{ formatDate(course.created_at) }}</span>
-            </div>
-          </div>
-        </el-card>
-      </div>
+        </el-table-column>
+        <el-table-column prop="title" label="课程标题" min-width="200" />
+        <el-table-column prop="description" label="课程描述" min-width="250" show-overflow-tooltip />
+        <el-table-column label="视频数量" width="100">
+          <template #default="{ row }">{{ row.video_count || 0 }}</template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="120">
+          <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" @click="openDialog('edit', row)">编辑</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
       <div v-if="total > 0" class="pagination">
         <el-pagination
@@ -62,7 +56,7 @@
       <el-dialog
         v-model="dialogVisible"
         :title="dialogMode === 'create' ? '创建课程' : '编辑课程'"
-        width="800px"
+        width="900px"
         :close-on-click-modal="false"
       >
         <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
@@ -72,6 +66,41 @@
           <el-form-item label="课程描述" prop="description">
             <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入课程描述（可选）" />
           </el-form-item>
+          <el-form-item label="封面图片">
+            <el-upload
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleCoverChange"
+              accept="image/*"
+              class="cover-upload"
+            >
+              <img v-if="coverPreview" :src="coverPreview" class="cover-preview" />
+              <el-icon v-else class="cover-icon"><Plus /></el-icon>
+            </el-upload>
+          </el-form-item>
+          
+          <el-form-item v-if="dialogMode === 'edit'" label="课时列表">
+            <el-table :data="videoList" style="width: 100%">
+              <el-table-column prop="episode" label="集数" width="80" />
+              <el-table-column prop="title" label="标题" min-width="150" />
+              <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 'completed' ? 'success' : row.status === 'processing' ? 'warning' : 'info'">
+                    {{ statusMap[row.status] }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{ row }">
+                  <el-button type="primary" size="small" @click="editVideo(row)">编辑</el-button>
+                  <el-button type="danger" size="small" @click="deleteVideo(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-button type="primary" style="margin-top: 10px" @click="showUploadVideo = true">上传新课时</el-button>
+          </el-form-item>
+
           <el-form-item v-if="dialogMode === 'create'" label="批量上传" prop="videos">
             <el-upload
               ref="uploadRef"
@@ -82,13 +111,9 @@
               :on-remove="handleFileRemove"
               accept="video/*"
               drag
-              class="upload-area"
             >
               <el-icon class="el-icon--upload"><upload-filled /></el-icon>
               <div class="el-upload__text">拖拽视频文件到此处或<em>点击上传</em></div>
-              <template #tip>
-                <div class="el-upload__tip">支持批量上传视频文件</div>
-              </template>
             </el-upload>
           </el-form-item>
           <el-form-item v-if="dialogMode === 'create' && videoItems.length > 0" label="课时列表">
@@ -102,7 +127,7 @@
               </el-table-column>
               <el-table-column label="操作" width="80">
                 <template #default="{ $index }">
-                  <el-button type="danger" size="small" :icon="Delete" @click="removeVideo($index)" />
+                  <el-button type="danger" size="small" @click="removeVideo($index)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -113,6 +138,52 @@
           <el-button type="primary" :loading="uploading" @click="handleSubmit">确定</el-button>
         </template>
       </el-dialog>
+
+      <el-dialog v-model="videoDialogVisible" title="编辑课时" width="500px">
+        <el-form :model="videoForm" label-width="80px">
+          <el-form-item label="集数">
+            <el-input-number v-model="videoForm.episode" :min="1" />
+          </el-form-item>
+          <el-form-item label="标题">
+            <el-input v-model="videoForm.title" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input v-model="videoForm.description" type="textarea" :rows="3" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="videoDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="updateVideo">确定</el-button>
+        </template>
+      </el-dialog>
+
+      <el-dialog v-model="showUploadVideo" title="上传新课时" width="600px">
+        <el-upload
+          ref="newVideoUploadRef"
+          :auto-upload="false"
+          :multiple="true"
+          :file-list="newVideoFiles"
+          :on-change="handleNewVideoChange"
+          :on-remove="handleNewVideoRemove"
+          accept="video/*"
+          drag
+        >
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">拖拽视频文件到此处或<em>点击上传</em></div>
+        </el-upload>
+        <el-table v-if="newVideoItems.length > 0" :data="newVideoItems" style="width: 100%; margin-top: 10px">
+          <el-table-column label="文件名" prop="fileName" />
+          <el-table-column label="课时标题" width="200">
+            <template #default="{ row }">
+              <el-input v-model="row.title" placeholder="课时标题" size="small" />
+            </template>
+          </el-table-column>
+        </el-table>
+        <template #footer>
+          <el-button @click="showUploadVideo = false">取消</el-button>
+          <el-button type="primary" :loading="uploadingNewVideo" @click="uploadNewVideos">上传</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -120,7 +191,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { ElMessageBox, ElMessage } from 'element-plus';
-import { Edit, Delete, VideoCamera, Clock, Loading, UploadFilled } from '@element-plus/icons-vue';
+import { Edit, Delete, VideoCamera, Clock, Loading, UploadFilled, Plus } from '@element-plus/icons-vue';
 import { auth, courses, videos } from '../api';
 
 const isAuth = ref(false);
@@ -138,14 +209,19 @@ const uploadRef = ref(null);
 const uploading = ref(false);
 const fileList = ref([]);
 const videoItems = ref([]);
-const form = ref({
-  title: '',
-  description: '',
-  id: null
-});
-const rules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }]
-};
+const form = ref({ title: '', description: '', id: null });
+const rules = { title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }] };
+const coverFile = ref(null);
+const coverPreview = ref('');
+const videoList = ref([]);
+const videoDialogVisible = ref(false);
+const videoForm = ref({ id: null, episode: 1, title: '', description: '' });
+const showUploadVideo = ref(false);
+const newVideoFiles = ref([]);
+const newVideoItems = ref([]);
+const newVideoUploadRef = ref(null);
+const uploadingNewVideo = ref(false);
+const statusMap = { pending: '待处理', processing: '处理中', completed: '已完成', failed: '失败' };
 
 onMounted(() => {
   isAuth.value = !!localStorage.getItem('token');
@@ -205,26 +281,40 @@ const handleDelete = async (course) => {
     ElMessage.success('删除成功');
     loadCourses();
   } catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('删除失败');
-    }
+    if (err !== 'cancel') ElMessage.error('删除失败');
   }
 };
 
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN');
-};
+const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN');
 
-const openDialog = (mode, course = null) => {
+const openDialog = async (mode, course = null) => {
   dialogMode.value = mode;
+  coverFile.value = null;
+  coverPreview.value = '';
+  videoList.value = [];
+  
   if (mode === 'edit' && course) {
     form.value = { title: course.title, description: course.description || '', id: course.id };
+    if (course.cover_image) {
+      coverPreview.value = `http://localhost:3000/${course.cover_image}`;
+    }
+    try {
+      const { data } = await courses.get(course.id);
+      videoList.value = data.videos || [];
+    } catch {
+      ElMessage.error('加载课时列表失败');
+    }
   } else {
     form.value = { title: '', description: '', id: null };
     fileList.value = [];
     videoItems.value = [];
   }
   dialogVisible.value = true;
+};
+
+const handleCoverChange = (file) => {
+  coverFile.value = file.raw;
+  coverPreview.value = URL.createObjectURL(file.raw);
 };
 
 const handleFileChange = (file) => {
@@ -259,9 +349,15 @@ const handleSubmit = async () => {
       ? await courses.create(courseData)
       : await courses.update(form.value.id, courseData);
     
+    const courseId = dialogMode.value === 'create' ? courseResult.id : form.value.id;
+    
+    if (coverFile.value) {
+      await courses.uploadCover(courseId, coverFile.value);
+    }
+    
     if (dialogMode.value === 'create' && videoItems.value.length > 0) {
       const formData = new FormData();
-      formData.append('courseId', courseResult.id);
+      formData.append('courseId', courseId);
       videoItems.value.forEach(item => formData.append('videos', item.file));
       formData.append('titles', JSON.stringify(videoItems.value.map(item => item.title)));
       await videos.upload(formData);
@@ -274,6 +370,79 @@ const handleSubmit = async () => {
     if (err !== 'cancel') ElMessage.error('操作失败');
   } finally {
     uploading.value = false;
+  }
+};
+
+const editVideo = (video) => {
+  videoForm.value = { id: video.id, episode: video.episode, title: video.title, description: video.description || '' };
+  videoDialogVisible.value = true;
+};
+
+const updateVideo = async () => {
+  try {
+    await videos.update(videoForm.value.id, {
+      episode: videoForm.value.episode,
+      title: videoForm.value.title,
+      description: videoForm.value.description
+    });
+    ElMessage.success('更新成功');
+    videoDialogVisible.value = false;
+    const { data } = await courses.get(form.value.id);
+    videoList.value = data.videos || [];
+  } catch {
+    ElMessage.error('更新失败');
+  }
+};
+
+const deleteVideo = async (video) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除课时"${video.title}"吗？`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    await videos.delete(video.id);
+    ElMessage.success('删除成功');
+    const { data } = await courses.get(form.value.id);
+    videoList.value = data.videos || [];
+  } catch (err) {
+    if (err !== 'cancel') ElMessage.error('删除失败');
+  }
+};
+
+const handleNewVideoChange = (file) => {
+  const fileName = file.name;
+  const title = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+  newVideoItems.value.push({ file: file.raw, fileName, title, uid: file.uid });
+};
+
+const handleNewVideoRemove = (file) => {
+  const index = newVideoItems.value.findIndex(item => item.uid === file.uid);
+  if (index > -1) newVideoItems.value.splice(index, 1);
+};
+
+const uploadNewVideos = async () => {
+  if (newVideoItems.value.length === 0) {
+    ElMessage.error('请选择要上传的视频');
+    return;
+  }
+  uploadingNewVideo.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('courseId', form.value.id);
+    newVideoItems.value.forEach(item => formData.append('videos', item.file));
+    formData.append('titles', JSON.stringify(newVideoItems.value.map(item => item.title)));
+    await videos.upload(formData);
+    ElMessage.success('上传成功');
+    showUploadVideo.value = false;
+    newVideoFiles.value = [];
+    newVideoItems.value = [];
+    const { data } = await courses.get(form.value.id);
+    videoList.value = data.videos || [];
+  } catch {
+    ElMessage.error('上传失败');
+  } finally {
+    uploadingNewVideo.value = false;
   }
 };
 </script>
@@ -296,22 +465,16 @@ const handleSubmit = async () => {
   width: 100%;
   max-width: 400px;
   border-radius: 16px;
-  overflow: hidden;
-}
-
-.auth-card :deep(.el-card__body) {
-  padding: 40px 30px;
 }
 
 .auth-card h2 {
   margin: 0 0 30px 0;
   text-align: center;
   color: #303133;
-  font-weight: 500;
 }
 
 .content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 40px 20px;
 }
@@ -320,14 +483,13 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .header h1 {
   margin: 0;
   color: #303133;
   font-size: 32px;
-  font-weight: 500;
 }
 
 .header div {
@@ -335,209 +497,65 @@ const handleSubmit = async () => {
   gap: 12px;
 }
 
-.loading {
+.cover-img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.no-cover {
+  width: 80px;
+  height: 60px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  min-height: 300px;
-  font-size: 32px;
-  color: #6ba3ff;
-}
-
-.empty {
-  min-height: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.course-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
-}
-
-.course-card {
-  border-radius: 12px;
-  border: 1px solid #e4e7ed;
-  transition: all 0.3s ease;
-  background: #ffffff;
-}
-
-.course-card :deep(.el-card__header) {
-  background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
-  border-bottom: 1px solid #e4e7ed;
-  padding: 20px;
-}
-
-.course-card :deep(.el-card__body) {
-  padding: 20px;
-}
-
-.course-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.course-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-.actions :deep(.el-button) {
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.actions :deep(.el-button:hover) {
-  transform: scale(1.05);
-}
-
-.course-info {
-  min-height: 100px;
-}
-
-.description {
-  color: #606266;
-  margin: 0 0 20px 0;
-  line-height: 1.8;
-  font-size: 14px;
-}
-
-.meta {
-  display: flex;
-  justify-content: space-between;
+  background: #f5f7fa;
   color: #909399;
-  font-size: 13px;
-}
-
-.meta span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 12px;
+  border-radius: 4px;
 }
 
 .pagination {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: 30px;
 }
 
-.upload-area {
-  width: 100%;
-}
-
-.upload-area :deep(.el-upload-dragger) {
-  width: 100%;
-  border: 2px solid #e4e7ed;
-  border-radius: 12px;
-  background: #e8f3ff;
-  transition: all 0.3s ease;
-}
-
-.upload-area :deep(.el-upload-dragger:hover) {
-  border-color: #6ba3ff;
-  background: #dceeff;
-}
-
-.upload-area :deep(.el-icon--upload) {
-  color: #6ba3ff;
-}
-
-.upload-area :deep(.el-upload__text) {
-  color: #303133;
-}
-
-.upload-area :deep(.el-upload__text em) {
-  color: #6ba3ff;
-}
-
-:deep(.el-button--primary) {
-  background: linear-gradient(135deg, #6ba3ff 0%, #5a92ee 100%);
-  border: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-:deep(.el-button--primary:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(107, 163, 255, 0.4);
-}
-
-:deep(.el-dialog) {
-  border-radius: 16px;
+.cover-upload {
+  width: 150px;
+  height: 150px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
   overflow: hidden;
 }
 
-:deep(.el-dialog__header) {
-  background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
-  padding: 24px 30px;
-  border-bottom: 1px solid #e4e7ed;
+.cover-upload:hover {
+  border-color: #409eff;
 }
 
-:deep(.el-dialog__body) {
-  padding: 30px;
+.cover-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-:deep(.el-form-item) {
-  margin-bottom: 24px;
-}
-
-:deep(.el-input__wrapper) {
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-:deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #6ba3ff inset;
+.cover-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 :deep(.el-table) {
   border-radius: 8px;
-  overflow: hidden;
 }
 
-:deep(.el-table th) {
-  background: #f5f7fa;
-  color: #303133;
-  font-weight: 500;
-}
-
-:deep(.el-table tr:hover > td) {
-  background: #fafafa;
-}
-
-:deep(.el-table td),
-:deep(.el-table th) {
-  border-color: #e4e7ed;
-}
-
-@media (max-width: 768px) {
-  .course-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .header {
-    flex-direction: column;
-    gap: 20px;
-    align-items: flex-start;
-  }
-  
-  .header h1 {
-    font-size: 24px;
-  }
+:deep(.el-dialog) {
+  border-radius: 16px;
 }
 </style>

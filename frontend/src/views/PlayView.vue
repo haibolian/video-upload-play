@@ -8,8 +8,16 @@
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else class="courses">
         <div v-for="course in coursesList" :key="course.id" class="course-card" @click="$router.push(`/play/${course.id}`)">
-          <h3>{{ course.title }}</h3>
-          <p>{{ course.description }}</p>
+          <div v-if="course.cover_image" class="course-cover">
+            <img :src="`http://localhost:3000/${course.cover_image}`" :alt="course.title" />
+          </div>
+          <div v-else class="course-cover no-cover">
+            <span>暂无封面</span>
+          </div>
+          <div class="course-info">
+            <h3>{{ course.title }}</h3>
+            <p>{{ course.description }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -28,7 +36,7 @@
           <div v-for="video in videos" :key="video.id" 
                :class="['video-item', { active: video.id === currentVideoId }]"
                @click="playVideo(video)">
-            <span class="episode">第{{ video.episode_number }}集</span>
+            <!-- <span class="episode">第{{ video.episode_number }}集</span> -->
             <span class="title">{{ video.title }}</span>
           </div>
         </div>
@@ -133,11 +141,11 @@ watch(courseId, (newId) => {
 }
 
 .course-card {
-  padding: 20px;
   border: 1px solid #ddd;
   border-radius: 8px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
 }
 
 .course-card:hover {
@@ -145,13 +153,42 @@ watch(courseId, (newId) => {
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+.course-cover {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.course-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-cover.no-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+.course-info {
+  padding: 20px;
+}
+
 .course-card h3 {
   margin: 0 0 10px 0;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .course-card p {
   margin: 0;
   color: #666;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .back-btn {

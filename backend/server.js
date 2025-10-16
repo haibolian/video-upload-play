@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use('/hls', express.static(path.join(__dirname, '../storage/hls')));
+app.use('/covers', express.static(path.join(__dirname, '../storage/covers')));
 
 app.use('/api/upload', uploadRoutes);
 app.use('/api/courses', coursesRoutes);

@@ -21,12 +21,21 @@ export const courses = {
   get: (id) => api.get(`/courses/${id}`),
   create: (data) => api.post('/upload/course', data),
   update: (id, data) => api.put(`/upload/course/${id}`, data),
-  delete: (id) => api.delete(`/upload/course/${id}`)
+  delete: (id) => api.delete(`/upload/course/${id}`),
+  uploadCover: (courseId, file) => {
+    const formData = new FormData();
+    formData.append('cover', file);
+    return api.post(`/upload/course/${courseId}/cover`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
 };
 
 export const videos = {
   upload: (formData, onProgress) => api.post('/upload/video', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: onProgress
-  })
+  }),
+  update: (videoId, data) => api.put(`/upload/video/${videoId}`, data),
+  delete: (videoId) => api.delete(`/upload/video/${videoId}`)
 };

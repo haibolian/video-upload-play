@@ -13,7 +13,12 @@ router.get('/', async (req, res) => {
     const total = countResult[0].total;
     
     const [courses] = await pool.query(
-      'SELECT * FROM courses ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      `SELECT c.*, COUNT(v.id) as video_count
+       FROM courses c
+       LEFT JOIN videos v ON c.id = v.course_id
+       GROUP BY c.id
+       ORDER BY c.created_at DESC
+       LIMIT ? OFFSET ?`,
       [pageSize, offset]
     );
     

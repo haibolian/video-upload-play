@@ -19,6 +19,27 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const coverStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../../storage/covers'));
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const uploadCover = multer({
+  storage: coverStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('只支持图片格式'));
+    }
+  }
+});
+
 router.post('/auth', async (req, res) => {
   const { password } = req.body;
   
@@ -125,12 +146,49 @@ router.put('/course/:id', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/course/:id/cover', authMiddleware, uploadCover.single('cover'), async (req, res) => {
+  const { id } = req.params;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: '未上传封面图片' });
+  }
+
+  try {
+    const [course] = await pool.query('SELECT cover_image FROM courses WHERE id = ?', [id]);
+    
+    if (course.length === 0) {
+      await fs.unlink(file.path).catch(() => {});
+      return res.status(404).json({ error: '课程不存在' });
+    }
+
+    if (course[0].cover_image) {
+      const oldPath = path.join(__dirname, '../../storage/covers', path.basename(course[0].cover_image));
+      await fs.unlink(oldPath).catch(() => {});
+    }
+
+    const coverPath = `covers/${file.filename}`;
+    await pool.query('UPDATE courses SET cover_image = ? WHERE id = ?', [coverPath, id]);
+
+    res.json({ coverUrl: `/covers/${file.filename}` });
+  } catch (error) {
+    await fs.unlink(file.path).catch(() => {});
+    res.status(500).json({ error: '上传封面失败' });
+  }
+});
+
 router.delete('/course/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const conn = await pool.getConnection();
   
   try {
     await conn.beginTransaction();
+    
+    const [courses] = await conn.query('SELECT cover_image FROM courses WHERE id = ?', [id]);
+    if (courses.length > 0 && courses[0].cover_image) {
+      const coverPath = path.join(__dirname, '../../storage/covers', path.basename(courses[0].cover_image));
+      await fs.unlink(coverPath).catch(() => {});
+    }
     
     const [videos] = await conn.query('SELECT original_path, hls_path FROM videos WHERE course_id = ?', [id]);
     
@@ -193,6 +251,59 @@ router.delete('/video/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ error: '删除视频失败' });
   } finally {
     conn.release();
+  }
+});
+
+router.put('/video/:id', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { title, description, episode } = req.body;
+
+  try {
+    const [videos] = await pool.query('SELECT course_id FROM videos WHERE id = ?', [id]);
+    
+    if (videos.length === 0) {
+      return res.status(404).json({ error: '视频不存在' });
+    }
+
+    const courseId = videos[0].course_id;
+
+    if (episode !== undefined) {
+      const [existing] = await pool.query(
+        'SELECT id FROM videos WHERE course_id = ? AND episode = ? AND id != ?',
+        [courseId, episode, id]
+      );
+      
+      if (existing.length > 0) {
+        return res.status(400).json({ error: '集数已存在' });
+      }
+    }
+
+    const updates = [];
+    const values = [];
+    
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (episode !== undefined) {
+      updates.push('episode = ?');
+      values.push(episode);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: '没有要更新的字段' });
+    }
+
+    values.push(id);
+    await pool.query(`UPDATE videos SET ${updates.join(', ')} WHERE id = ?`, values);
+
+    res.json({ message: '更新成功' });
+  } catch (error) {
+    res.status(500).json({ error: '更新视频失败' });
   }
 });
 
