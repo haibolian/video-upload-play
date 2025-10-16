@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { courses } from '../api';
 import VideoPlayer from '../components/VideoPlayer.vue';
@@ -62,7 +62,7 @@ const loadCourses = async () => {
   error.value = '';
   try {
     const res = await courses.list();
-    coursesList.value = res.data;
+    coursesList.value = res.data.courses;
   } catch (err) {
     error.value = '加载课程列表失败';
   } finally {
@@ -92,6 +92,15 @@ const playVideo = (video) => {
 
 onMounted(() => {
   if (courseId.value) {
+    loadCourse();
+  } else {
+    loadCourses();
+  }
+});
+
+// 监听路由参数变化
+watch(courseId, (newId) => {
+  if (newId) {
     loadCourse();
   } else {
     loadCourses();

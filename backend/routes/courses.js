@@ -4,9 +4,20 @@ const pool = require('../config/db');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const offset = (page - 1) * pageSize;
+  
   try {
-    const [courses] = await pool.query('SELECT * FROM courses ORDER BY created_at DESC');
-    res.json(courses);
+    const [countResult] = await pool.query('SELECT COUNT(*) as total FROM courses');
+    const total = countResult[0].total;
+    
+    const [courses] = await pool.query(
+      'SELECT * FROM courses ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [pageSize, offset]
+    );
+    
+    res.json({ courses, total, page, pageSize });
   } catch (error) {
     res.status(500).json({ error: '获取课程列表失败' });
   }

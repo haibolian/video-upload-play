@@ -17,9 +17,11 @@ export const auth = {
 };
 
 export const courses = {
-  list: () => api.get('/courses'),
+  list: (params) => api.get('/courses', { params }),
   get: (id) => api.get(`/courses/${id}`),
-  create: (data) => api.post('/upload/course', data)
+  create: (data) => api.post('/upload/course', data),
+  update: (id, data) => api.put(`/upload/course/${id}`, data),
+  delete: (id) => api.delete(`/upload/course/${id}`)
 };
 
 export const videos = {
