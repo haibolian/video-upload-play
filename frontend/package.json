@@ -12,6 +12,7 @@
     "axios": "^1.6.2",
     "element-plus": "^2.11.4",
     "video.js": "^8.10.0",
+    "videojs-theme-kit": "^0.0.15",
     "vue": "^3.3.11",
     "vue-router": "^4.2.5"
   },
