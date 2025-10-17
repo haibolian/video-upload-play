@@ -16,11 +16,22 @@ const props = defineProps({
 const videoRef = ref(null);
 let player = null;
 
+// 暴露 player 实例给父组件
+defineExpose({
+  getPlayer: () => player
+});
+
 onMounted(() => {
   player = videojs(videoRef.value, {
     controls: true,
     fluid: true,
-    preload: 'auto'
+    preload: 'auto',
+    controlBar: {
+      fullscreenToggle: true
+    },
+    userActions: {
+      hotkeys: true
+    }
   });
   
   if (props.src) {

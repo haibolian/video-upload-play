@@ -21,7 +21,7 @@
       <el-table v-loading="loading" :data="courseList" style="width: 100%">
         <el-table-column label="封面" width="120">
           <template #default="{ row }">
-            <img v-if="row.cover_image" :src="`http://localhost:3000/${row.cover_image}`" class="cover-img" />
+            <img v-if="row.cover_image" :src="`http://192.168.31.39:3000/${row.cover_image}`" class="cover-img" />
             <div v-else class="no-cover">无封面</div>
           </template>
         </el-table-column>
@@ -296,7 +296,7 @@ const openDialog = async (mode, course = null) => {
   if (mode === 'edit' && course) {
     form.value = { title: course.title, description: course.description || '', id: course.id };
     if (course.cover_image) {
-      coverPreview.value = `http://localhost:3000/${course.cover_image}`;
+      coverPreview.value = `http://192.168.31.39:3000/${course.cover_image}`;
     }
     try {
       const { data } = await courses.get(course.id);

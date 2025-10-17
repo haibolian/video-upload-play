@@ -9,7 +9,7 @@
       <div v-else class="courses">
         <div v-for="course in coursesList" :key="course.id" class="course-card" @click="$router.push(`/play/${course.id}`)">
           <div v-if="course.cover_image" class="course-cover">
-            <img :src="`http://localhost:3000/${course.cover_image}`" :alt="course.title" />
+            <img :src="`http://192.168.31.39:3000/${course.cover_image}`" :alt="course.title" />
           </div>
           <div v-else class="course-cover no-cover">
             <span>暂无封面</span>
@@ -28,8 +28,11 @@
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else class="player-container">
-        <div class="video-section">
-          <VideoPlayer :src="currentVideoSrc" />
+        <div>
+          <div class="video-section">
+            <VideoPlayer ref="videoPlayerRef" :src="currentVideoSrc" />
+          </div>
+          <button @click="toggleFullscreen" class="fullscreen-btn">全屏播放</button>
         </div>
         <div class="playlist">
           <h3>视频列表</h3>
@@ -59,10 +62,11 @@ const error = ref('');
 const coursesList = ref([]);
 const videos = ref([]);
 const currentVideoId = ref(null);
+const videoPlayerRef = ref(null);
 
 const currentVideoSrc = computed(() => {
   if (!currentVideoId.value) return '';
-  return `http://localhost:3000/hls/${currentVideoId.value}/index.m3u8`;
+  return `http://192.168.31.39:3000/hls/${currentVideoId.value}/index.m3u8`;
 });
 
 const loadCourses = async () => {
@@ -96,6 +100,20 @@ const loadCourse = async () => {
 
 const playVideo = (video) => {
   currentVideoId.value = video.id;
+};
+
+const toggleFullscreen = () => {
+  // 通过暴露的方法获取 Video.js player 实例
+  if (videoPlayerRef.value) {
+    const player = videoPlayerRef.value.getPlayer();
+    if (player) {
+      if (player.isFullscreen()) {
+        player.exitFullscreen();
+      } else {
+        player.requestFullscreen();
+      }
+    }
+  }
 };
 
 onMounted(() => {
@@ -210,6 +228,22 @@ watch(courseId, (newId) => {
 .video-section {
   background: #000;
   aspect-ratio: 16/9;
+  position: relative;
+}
+
+.fullscreen-btn {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.fullscreen-btn:hover {
+  background: #35a372;
 }
 
 .playlist {
