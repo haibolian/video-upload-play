@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { processVideo } = require('./ffmpeg');
+const fs = require('fs').promises;
 
 const processTaskQueue = async () => {
   const conn = await pool.getConnection();
@@ -30,6 +31,8 @@ const processTaskQueue = async () => {
         'UPDATE videos SET status = ?, hls_path = ? WHERE id = ?',
         ['completed', `storage/hls/${task.video_id}/index.m3u8`, task.video_id]
       );
+
+      await fs.unlink(task.input_path).catch(() => {});
     } catch (error) {
       await conn.query(
         'UPDATE task_queue SET status = ?, error_message = ? WHERE id = ?',
