@@ -7,7 +7,7 @@ const processTaskQueue = async () => {
   
   try {
     const [tasks] = await conn.query(
-      'SELECT * FROM task_queue WHERE status = ? LIMIT 1',
+      'SELECT tq.*, v.course_id FROM task_queue tq JOIN videos v ON tq.video_id = v.id WHERE tq.status = ? LIMIT 1',
       ['pending']
     );
 
@@ -20,7 +20,7 @@ const processTaskQueue = async () => {
     );
 
     try {
-      await processVideo(task.video_id, task.input_path);
+      await processVideo(task.video_id, task.course_id, task.input_path);
       
       await conn.query(
         'UPDATE task_queue SET status = ? WHERE id = ?',
@@ -29,7 +29,7 @@ const processTaskQueue = async () => {
       
       await conn.query(
         'UPDATE videos SET status = ?, hls_path = ? WHERE id = ?',
-        ['completed', `storage/hls/${task.video_id}/index.m3u8`, task.video_id]
+        ['completed', `storage/hls/${task.course_id}/${task.video_id}/index.m3u8`, task.video_id]
       );
 
       await fs.unlink(task.input_path).catch(() => {});

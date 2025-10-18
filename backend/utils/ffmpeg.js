@@ -2,8 +2,8 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
 
-const processVideo = async (videoId, inputPath) => {
-  const outputDir = path.join(__dirname, '../../storage/hls', String(videoId));
+const processVideo = async (videoId, courseId, inputPath) => {
+  const outputDir = path.join(__dirname, '../../storage/hls', String(courseId), String(videoId));
   await fs.mkdir(outputDir, { recursive: true });
   
   const outputPath = path.join(outputDir, 'index.m3u8');

@@ -68,7 +68,9 @@ const videoPlayerRef = ref(null);
 
 const currentVideoSrc = computed(() => {
   if (!currentVideoId.value) return '';
-  return `${STATIC_BASE_URL}/hls/${currentVideoId.value}/index.m3u8`;
+  const video = videos.value.find(v => v.id === currentVideoId.value);
+  if (!video) return '';
+  return `${STATIC_BASE_URL}/hls/${video.course_id}/${currentVideoId.value}/index.m3u8`;
 });
 
 const loadCourses = async () => {
