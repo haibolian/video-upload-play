@@ -9,7 +9,7 @@
       <div v-else class="courses">
         <div v-for="course in coursesList" :key="course.id" class="course-card" @click="$router.push(`/play/${course.id}`)">
           <div v-if="course.cover_image" class="course-cover">
-            <img :src="`http://192.168.31.39:3000/${course.cover_image}`" :alt="course.title" />
+            <img :src="`${STATIC_BASE_URL}/${course.cover_image}`" :alt="course.title" />
           </div>
           <div v-else class="course-cover no-cover">
             <span>暂无封面</span>
@@ -54,6 +54,8 @@ import { useRoute } from 'vue-router';
 import { courses } from '../api';
 import VideoPlayer from '../components/VideoPlayer.vue';
 
+const STATIC_BASE_URL = import.meta.env.VITE_STATIC_BASE_URL;
+
 const route = useRoute();
 const courseId = computed(() => route.params.courseId);
 
@@ -66,7 +68,7 @@ const videoPlayerRef = ref(null);
 
 const currentVideoSrc = computed(() => {
   if (!currentVideoId.value) return '';
-  return `http://192.168.31.39:3000/hls/${currentVideoId.value}/index.m3u8`;
+  return `${STATIC_BASE_URL}/hls/${currentVideoId.value}/index.m3u8`;
 });
 
 const loadCourses = async () => {
