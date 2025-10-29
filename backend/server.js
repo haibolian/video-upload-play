@@ -12,7 +12,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// 设置请求超时为60分钟（适应慢速批量上传）
+app.use((req, res, next) => {
+  req.setTimeout(60 * 60 * 1000);
+  res.setTimeout(60 * 60 * 1000);
+  next();
+});
 app.use('/hls', express.static(path.join(__dirname, '../storage/hls')));
 app.use('/covers', express.static(path.join(__dirname, '../storage/covers')));
 

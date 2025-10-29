@@ -17,7 +17,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 2 * 1024 * 1024 * 1024 // 2GB
+  }
+});
 
 const coverStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -65,7 +70,7 @@ router.post('/course', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/video', authMiddleware, upload.array('videos', 20), async (req, res) => {
+router.post('/video', authMiddleware, upload.array('videos', 50), async (req, res) => {
   const { courseId, titles, description } = req.body;
   const files = req.files;
 
@@ -99,8 +104,8 @@ router.post('/video', authMiddleware, upload.array('videos', 20), async (req, re
       const videoId = videoResult.insertId;
 
       await conn.query(
-        'INSERT INTO task_queue (video_id, input_path, status) VALUES (?, ?, ?)',
-        [videoId, file.path, 'pending']
+        'INSERT INTO task_queue (video_id, course_id, input_path, status) VALUES (?, ?, ?, ?)',
+        [videoId, courseId, file.path, 'pending']
       );
 
       uploadedVideos.push({ id: videoId, title: videoTitle, episode });
